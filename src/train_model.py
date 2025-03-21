@@ -1,17 +1,14 @@
 from model import GRUMotionClassifier
 import Data_Extract
 from SlidingWindow import slidingwindow
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
-import joblib  # LabelEncoder 저장용
 
-def train_m(data_set, Y_label):
+def train_m(data_set, Y_label, callback=None):
     num=len(data_set)
 
     X=[]
@@ -35,8 +32,6 @@ def train_m(data_set, Y_label):
 
     label_encoder = LabelEncoder()
     y_encoded = label_encoder.fit_transform(y)
-
-    joblib.dump(label_encoder, "saved_model/label_encoder.pkl")
 
     X_train, X_val, y_train, y_val = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
@@ -95,8 +90,11 @@ def train_m(data_set, Y_label):
 
         # 10번마다 훈련 손실 및 검증 손실 출력
         if (epoch + 1) % 10 == 0: 
-            print(f"Epoch [{epoch+1}/{num_epochs}], Training Loss: {loss.item():.4f}, Validation Loss: {avg_val_loss:.4f}")
+            message = (f"Epoch [{epoch+1}/{num_epochs}], Training Loss: {loss.item():.4f}, Validation Loss: {avg_val_loss:.4f} 진행중")
+            print(message)
+            if callback:
+                callback(message)
+            else:
+                 print(message)
 
-
-    torch.save(model.state_dict(), "saved_model/model.pth")
-    print("✅ 모델 저장 완료!")
+    return model, label_encoder

@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import mplcursors
-import math
 
 class rawpreprocessing:
     def __init__(self, **kwargs):

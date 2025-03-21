@@ -5,13 +5,7 @@ import numpy as np
 import Data_Extract
 import joblib  # LabelEncoder 불러오기
 
-def test_m(test, Y_label):
-    label_encoder = joblib.load("saved_model/label_encoder.pkl")
-
-    model = GRUMotionClassifier(input_size=40, hidden_size=64, num_layers=2, output_size=len(Y_label))
-    model.load_state_dict(torch.load("saved_model/model.pth"))
-    model.eval()  # 평가 모드 설정
-
+def test_m(test, model, label_encoder, Y_label):
     tests=[]
 
     sliding_window_test = slidingwindow(test, Y_label)
@@ -37,3 +31,5 @@ def test_m(test, Y_label):
     for i, pred in enumerate(predicted_class):
         print(f"Test Sample {i+1}: Predicted Motion = {label_encoder.inverse_transform([pred.item()])}")
     # 예측값과 실제값을 비교하여 출력
+
+    return predicted_class

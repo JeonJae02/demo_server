@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>Client Page</title>
+</head>
+<body>
+    <h1>학습 시작 페이지</h1>
+    <button id="start-learning">학습 시작</button>
+    <p id="client-id-display">클라이언트 ID: <span id="client-id">없음</span></p>
+    
+    <h1>Label 입력</h1>
+    <input type="text" id="label-input" placeholder="Label 입력">
+    <button id="add-label-btn">입력</button>
+  
+    <div class="label-container" id="label-container">
+      <!-- 입력된 Label들이 표시됩니다 -->
+    </div>
+  
+    <button class="submit-btn" id="submit-btn">확인</button>
+
+    <div id="label-summary">
+        <!-- Label 총합이 여기에 표시됩니다 -->
+    </div>
+
+    <h1>파일 업로드</h1>
+    <p>CSV 또는 NPY 파일 중 하나를 선택하세요.</p>
+
+    <!-- CSV와 NPY 선택 버튼 -->
+    <button id="csvButton">CSV 파일 선택</button>
+    <button id="npyButton">NPY 파일 선택</button>
+
+    <!-- 파일 선택 input 요소 (숨김 처리) -->
+    <input type="file" id="fileInput" style="display: none;">
+
+    <!-- 결과 표시 -->
+    <p id="result"></p>
+
+
+    <button id="startTraining">학습 시작</button>
+
+    <pre id="output"></pre>
+
+    <h1>테스트 파일 업로드</h1>
+    <p>CSV 또는 NPY 파일 중 하나를 선택하세요.</p>
+
+    <!-- CSV와 NPY 선택 버튼 -->
+    <button id="csvButtontest">CSV 파일 선택</button>
+    <button id="npyButtontest">NPY 파일 선택</button>
+
+    <!-- 파일 선택 input 요소 (숨김 처리) -->
+    <input type="file" id="fileInputtest" style="display: none;">
+
+    <!-- 결과 표시 -->
+    <p id="resulttest"></p>
+
+    <button id="startTesting">결과는~?</button>
+
+    <pre id="testresult"></pre>
+
+</span></p>
+
+    <!-- JavaScript 파일 연결 -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
