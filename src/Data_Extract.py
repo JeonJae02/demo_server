@@ -1,4 +1,5 @@
 import numpy as np
+import statistics
 import matplotlib.pyplot as plt
 
 class data_extraction:
@@ -7,6 +8,8 @@ class data_extraction:
         self.sampling_rate=kwargs.get('sampling_rate', 100)
         self.amp_limit=kwargs.get('amp_limit', 0.1)
         self.low_frq_limit=kwargs.get('low_frq_limit', 10)
+        self.stat_variable=kwargs.get('stat_variable', 0b1100111) # 범위, 표준편차, 기댓값, 최대, 최소 1100111
+        self.fft_variable=kwargs.get('fft_variable', 1) # 기본으로 fft사용
         self.valid_freq=[]
         self.valid_amp=[]
     
@@ -28,29 +31,56 @@ class data_extraction:
 
 
     def extract_feature(self):
-        traditional_feature=self.stat_dt()
-        fft_feature=[]
 
+        traditional_feature=self.stat_dt(self.stat_variable & (1 << 6),
+                                         self.stat_variable & (1 << 5),
+                                         self.stat_variable & (1 << 4),
+                                         self.stat_variable & (1 << 3),
+                                         self.stat_variable & (1 << 2),
+                                         self.stat_variable & (1 << 1),
+                                         self.stat_variable & (1 << 0))
+        fft_feature=[]
+        if(self.fft_variable != 1):
+            return traditional_feature
+        
         for i in range(4):
             raw_freq, raw_amp = self.fourier_trans(self.data_set[:, i])
             fft_feature+=(self.stat_fft_amp(self.filter_amp(raw_amp)))
+        
         return np.concatenate((fft_feature,traditional_feature))
     
-    def stat_dt(self): #raw한 데이터를 전통적인 방법으로 특징 추출
-        d_mean=[]
-        d_std=[]
+    def stat_dt(self, _max, _min, _mean, _median, _mode, _std, _range): #raw한 데이터를 전통적인 방법으로 특징 추출
         d_max=[]
         d_min=[]
+        d_mean=[]
+        d_median=[]
+        d_mode=[]
+        d_std=[]
         d_range=[]
+
+        if(_max):
+            for i in range(4):
+                d_max.append(np.max(self.data_set[:, i]))
+        if(_min):
+            for i in range(4):
+                d_min.append(np.min(self.data_set[:, i]))
+        if(_mean):
+            for i in range(4):
+                d_mean.append(np.mean(self.data_set[:, i]))
+        if(_median):
+            for i in range(4):
+                d_median.append(np.median(self.data_set[:, i]))
+        if(_mode):
+            for i in range(4):
+                d_mode.append(statistics.mode(self.data_set[:, i]))
+        if(_std):
+            for i in range(4):
+                d_std.append(np.std(self.data_set[:, i]))
+        if(_range):
+            for i in range(4):
+                d_range.append(d_max[i] - d_min[i])
     
-        for i in range(4):
-            d_mean.append(np.mean(self.data_set[:, i]))
-            d_std.append(np.std(self.data_set[:, i]))
-            d_max.append(np.max(self.data_set[:, i]))
-            d_min.append(np.min(self.data_set[:, i]))
-            d_range.append(d_max[i] - d_min[i])
-    
-        return np.concatenate((d_mean, d_std, d_max, d_min, d_range))
+        return np.concatenate((d_max, d_min, d_mean, d_median, d_mode, d_std, d_range))
     
     def fourier_trans(self, data_signal): #fft를 통해 한 축의 가속도 그래프에서 freq와 amp를 반환
         amp=np.fft.fft(data_signal)

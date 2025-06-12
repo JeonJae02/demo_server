@@ -52,7 +52,7 @@ button:hover {
     right: -5px;
   }
   
-  .submit-btn {
+  .submit-btn .select_preprocess {
     margin-top: 20px;
     padding: 10px 20px;
     background-color: #4CAF50;

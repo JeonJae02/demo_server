@@ -8,7 +8,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
 
-def train_m(data_set, Y_label, callback=None):
+def train_m(data_set, Y_label, stat_variable=103, fft_variable=1, callback=None):
     num=len(data_set)
 
     X=[]
@@ -26,7 +26,7 @@ def train_m(data_set, Y_label, callback=None):
             #print(Data_Extract.data_extraction(win_datas[3]).extract_feature())
             for i in range(0, len(win_datas)):
                     
-                    X.append(Data_Extract.data_extraction(win_datas[i]).extract_feature())
+                    X.append(Data_Extract.data_extraction(win_datas[i], stat_variable=stat_variable, fft_variable=fft_variable).extract_feature())
                     y.append(Y_label[int(j/10)])
 
 
@@ -49,7 +49,7 @@ def train_m(data_set, Y_label, callback=None):
     data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True) # 시계열 데이터니깐 shuffle을 하면 안되지만 sliding window를 사용했기때문에 여기선 True
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
-    model = GRUMotionClassifier(input_size=40, hidden_size=64, num_layers=2, output_size=len(Y_label))
+    model = GRUMotionClassifier(input_size=len(X[1]), hidden_size=64, num_layers=2, output_size=len(Y_label))
     # input_size는 현재 x, y, z, a에서 뽑은 feature 40개
     # hidden_size는 이전 데이터를 얼마나 기억할 것인지, 높으면 정확성이 올라가지만 너무 올라가면 과적합
     # num_layers는 GRU 층

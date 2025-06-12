@@ -97,6 +97,17 @@ def make_data_from_npy():
         "total_count": total_count
     })
 
+@app.route("/set_train", methods=["POST"])
+def set_train():
+    client_id = session.get('client_id')
+    if not client_id:
+        return jsonify({"error": "Session not initialized"}), 401
+    
+    data=request.json
+    session["stat_var"]=data.get('stat_var')
+    session["fft_var"]=data.get('fft_var')
+
+    return jsonify({'message': 'Data saved successfully!'})
 
 @app.route("/train_data", methods=["GET"])
 def train_data():
@@ -106,6 +117,8 @@ def train_data():
     
     t_data_set = session["data_set"]
     t_labels= session["labels"]
+    stat_var=session["stat_var"]
+    fft_var=session["fft_var"]
 
 
     def generate():
@@ -115,7 +128,7 @@ def train_data():
             q.put(message)
 
         def run_training():
-            model, label_encoder = train_model.train_m(t_data_set, t_labels, callback=progress_callback)
+            model, label_encoder = train_model.train_m(t_data_set, t_labels, stat_variable=stat_var, fft_variable=fft_var, callback=progress_callback)
             # 모델 및 라벨 인코더 저장
             
             os.makedirs('tmp', exist_ok=True)
@@ -182,6 +195,8 @@ def test():
        
     datatest_list=session["test_set"]
     y_label=session["labels"]
+    stat_var=session["stat_var"]
+    fft_var=session["fft_var"]    
 
     client_dir = os.path.join("tmp", client_id)
     model_path = os.path.join(client_dir, "model.pkl")
@@ -190,7 +205,7 @@ def test():
     if os.path.exists(model_path) and os.path.exists(label_path):
         model = joblib.load(model_path)
         label_encoder = joblib.load(label_path)
-        predicted_class=test_model.test_m(datatest_list, model, label_encoder, y_label)
+        predicted_class=test_model.test_m(datatest_list, model, label_encoder, y_label, stat_variable=stat_var, fft_variable=fft_var)
         def generate():
             for i, pred in enumerate(predicted_class):
                 yield f"data: Test Sample {i+1}: Predicted Motion = {label_encoder.inverse_transform([pred.item()])}\n\n"
@@ -228,6 +243,6 @@ def login():
 
 if __name__ == '__main__':
     # SSL 인증서와 키 파일 경로 설정
-    app.run(ssl_context=('C:/Users/user/jentry/makeserver/src/certs/certificate.crt',
-                         'C:/Users/user/jentry/makeserver/src/certs/private.key'),
+    app.run(ssl_context=('C:/Users/전재형/ca/server.crt',
+                         'C:/Users/전재형/ca/server.key'),
             host='0.0.0.0', port=443)

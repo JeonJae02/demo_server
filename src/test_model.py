@@ -5,7 +5,7 @@ import numpy as np
 import Data_Extract
 import joblib  # LabelEncoder 불러오기
 
-def test_m(test, model, label_encoder, Y_label):
+def test_m(test, model, label_encoder, Y_label, stat_variable=103, fft_variable=1):
     tests=[]
 
     sliding_window_test = slidingwindow(test, Y_label)
@@ -18,7 +18,7 @@ def test_m(test, model, label_encoder, Y_label):
 
             # SlidingWindow 클래스 인스턴스 생성 및 슬라이딩 윈도우 처리
             win_datas=sliding_window_test.sliding_window(1/max_freq,1/max_freq*0.5,j)
-            tests.append(Data_Extract.data_extraction(win_datas[len(win_datas)//2]).extract_feature())
+            tests.append(Data_Extract.data_extraction(win_datas[len(win_datas)//2], stat_variable=stat_variable, fft_variable=fft_variable).extract_feature())
 
     test_sample = torch.tensor(tests, dtype=torch.float32)
 

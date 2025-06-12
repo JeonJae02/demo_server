@@ -127,6 +127,39 @@ fileInput.addEventListener("change", () => {
     });
 });
 
+document.getElementById('select_preprocess').addEventListener('click', () => {
+  // 2진법 선택 데이터 계산
+  let binarySelection = 0;
+  for (let i = 0; i <= 6; i++) {
+      const checkbox = document.getElementById(`option${i}`);
+      if (checkbox.checked) {
+          binarySelection |= (1 << (i));  // 해당 비트 설정
+      }
+  }
+
+  // FFT 선택 여부
+  const fftSelected = document.getElementById('fft').checked;
+
+  // 서버로 데이터 전송
+  fetch('/set_train', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+          stat_var: binarySelection,
+          fft_var: fftSelected
+      }),
+  })
+  .then(response => response.json())
+  .then(data => {
+      alert(data.message);
+  })
+  .catch(error => {
+      console.error('Error:', error);
+  });
+});
+
 // 학습 시작
 document.getElementById('startTraining').addEventListener('click', () => {
   /*const epochs = document.getElementById('epochs').value || 10;
