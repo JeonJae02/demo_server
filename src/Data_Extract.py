@@ -78,7 +78,7 @@ class data_extraction:
                 d_std.append(np.std(self.data_set[:, i]))
         if(_range):
             for i in range(4):
-                d_range.append(d_max[i] - d_min[i])
+                d_range.append(np.max(self.data_set[:, i]) - np.min(self.data_set[:, i]))
     
         return np.concatenate((d_max, d_min, d_mean, d_median, d_mode, d_std, d_range))
     

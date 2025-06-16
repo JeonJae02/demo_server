@@ -160,6 +160,40 @@ document.getElementById('select_preprocess').addEventListener('click', () => {
   });
 });
 
+document.getElementById('submit-button').addEventListener('click', function () {
+    const selectedModel = document.querySelector('input[name="model"]:checked');
+
+    if (!selectedModel) {
+        alert('모델을 선택해주세요!');
+        return;
+    }
+
+    const modelName = selectedModel.value;
+
+    // SVM과 KNN 구분 메시지
+    if (modelName === 'SVM' || modelName === 'KNN') {
+        console.log(`${modelName}은(는) 뉴럴 네트워크가 아닙니다.`);
+    } else {
+        console.log(`${modelName}은(는) 뉴럴 네트워크 기반 모델입니다.`);
+    }
+
+    // 서버로 데이터 전송
+    fetch('/select_model', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ model: modelName }),
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            document.getElementById('response-message').innerText = data.message;
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
+});
+
 // 학습 시작
 document.getElementById('startTraining').addEventListener('click', () => {
   /*const epochs = document.getElementById('epochs').value || 10;

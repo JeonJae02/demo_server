@@ -109,6 +109,20 @@ def set_train():
 
     return jsonify({'message': 'Data saved successfully!'})
 
+@app.route("/select_model", methods=["POST"])
+def select_model():
+    client_id = session.get('client_id')
+    if not client_id:
+        return jsonify({"error": "Session not initialized"}), 401
+    
+    data=request.json
+    selected_model = data.get('model')
+    if selected_model:
+        print(f"선택된 모델: {selected_model}")
+        session["model"] = selected_model
+        return jsonify({'message': f'{selected_model} 모델이 저장되었습니다!'})
+    return jsonify({'message': '모델 선택에 실패했습니다.'}), 400
+    
 @app.route("/train_data", methods=["GET"])
 def train_data():
     client_id = session.get('client_id')
@@ -119,7 +133,7 @@ def train_data():
     t_labels= session["labels"]
     stat_var=session["stat_var"]
     fft_var=session["fft_var"]
-
+    selected_model=session["model"]
 
     def generate():
         q = Queue()
@@ -128,7 +142,7 @@ def train_data():
             q.put(message)
 
         def run_training():
-            model, label_encoder = train_model.train_m(t_data_set, t_labels, stat_variable=stat_var, fft_variable=fft_var, callback=progress_callback)
+            model, label_encoder = train_model.train_NN(selected_model, t_data_set, t_labels, stat_variable=stat_var, fft_variable=fft_var, callback=progress_callback)
             # 모델 및 라벨 인코더 저장
             
             os.makedirs('tmp', exist_ok=True)
@@ -152,7 +166,41 @@ def train_data():
 
         yield "data: Training completed.\n\n"
 
-    return Response(generate(), content_type="text/event-stream")
+    def generate_M():
+        q = Queue()
+        # 콜백 함수 정의
+        def progress_callback(message):
+            q.put(message)
+
+        def run_training():
+            model, label_encoder = train_model.train_m(selected_model, t_data_set, t_labels, stat_variable=stat_var, fft_variable=fft_var, callback=progress_callback)
+            # 모델 및 라벨 인코더 저장
+            
+            os.makedirs('tmp', exist_ok=True)
+            client_dir = os.path.join("tmp", client_id)
+            os.makedirs(client_dir, exist_ok=True)
+
+            model_path = os.path.join(client_dir, "model.pkl")
+            label_path = os.path.join(client_dir, "label_encoder.pkl")
+            joblib.dump(model, model_path)
+            joblib.dump(label_encoder, label_path)
+            
+            q.put(None)  # 완료 신호
+
+        Thread(target=run_training).start()
+
+        while True:
+            message = q.get()
+            if message is None:
+                break
+            yield f"data: {message}\n\n"
+
+        yield "data: Training completed.\n\n"
+
+    if selected_model == 'KNN' or selected_model == 'SVM':
+        return Response(generate_M(), content_type="text/event-stream")
+    else:
+        return Response(generate(), content_type="text/event-stream")
 
 
 @app.route("/input_npy_data_test", methods=["POST"])
@@ -196,7 +244,8 @@ def test():
     datatest_list=session["test_set"]
     y_label=session["labels"]
     stat_var=session["stat_var"]
-    fft_var=session["fft_var"]    
+    fft_var=session["fft_var"]
+    selected_model=session["model"]
 
     client_dir = os.path.join("tmp", client_id)
     model_path = os.path.join(client_dir, "model.pkl")
@@ -205,7 +254,11 @@ def test():
     if os.path.exists(model_path) and os.path.exists(label_path):
         model = joblib.load(model_path)
         label_encoder = joblib.load(label_path)
-        predicted_class=test_model.test_m(datatest_list, model, label_encoder, y_label, stat_variable=stat_var, fft_variable=fft_var)
+        if selected_model == 'SVM' or selected_model == 'KNN':
+            predicted_class=test_model.test_m(datatest_list, model, label_encoder, y_label, stat_variable=stat_var, fft_variable=fft_var)
+        else:
+            predicted_class=test_model.test_NN(datatest_list, model, label_encoder, y_label, stat_variable=stat_var, fft_variable=fft_var)
+
         def generate():
             for i, pred in enumerate(predicted_class):
                 yield f"data: Test Sample {i+1}: Predicted Motion = {label_encoder.inverse_transform([pred.item()])}\n\n"

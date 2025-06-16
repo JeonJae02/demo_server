@@ -1,4 +1,7 @@
 from model import GRUMotionClassifier
+from model import RNNMotionClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
 import Data_Extract
 from SlidingWindow import slidingwindow
 import torch
@@ -7,8 +10,9 @@ import torch.optim as optim
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
+from sklearn.metrics import accuracy_score
 
-def train_m(data_set, Y_label, stat_variable=103, fft_variable=1, callback=None):
+def train_NN(select_model, data_set, Y_label, stat_variable=103, fft_variable=1, callback=None):
     num=len(data_set)
 
     X=[]
@@ -49,7 +53,13 @@ def train_m(data_set, Y_label, stat_variable=103, fft_variable=1, callback=None)
     data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True) # 시계열 데이터니깐 shuffle을 하면 안되지만 sliding window를 사용했기때문에 여기선 True
     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
-    model = GRUMotionClassifier(input_size=len(X[1]), hidden_size=64, num_layers=2, output_size=len(Y_label))
+    if select_model == 'GRU':
+        model = GRUMotionClassifier(input_size=len(X[1]), hidden_size=64, num_layers=2, output_size=len(Y_label))
+    elif select_model == 'RNN':
+        model = RNNMotionClassifier(input_size=len(X[1]), hidden_size=64, num_layers=2, output_size=len(Y_label))
+    else:
+        raise ValueError("Invalid model type specified.")
+
     # input_size는 현재 x, y, z, a에서 뽑은 feature 40개
     # hidden_size는 이전 데이터를 얼마나 기억할 것인지, 높으면 정확성이 올라가지만 너무 올라가면 과적합
     # num_layers는 GRU 층
@@ -96,5 +106,53 @@ def train_m(data_set, Y_label, stat_variable=103, fft_variable=1, callback=None)
                 callback(message)
             else:
                  print(message)
+
+    return model, label_encoder
+
+def train_m(select_model, data_set, Y_label, stat_variable=103, fft_variable=1, callback=None):
+    num=len(data_set)
+
+    X=[]
+    y=[]
+    sliding_window_processor = slidingwindow(data_set, Y_label)
+    for j in range(0, num):  # row data 갯수 만큼 돌림
+            part_data = data_set[j]
+
+            # Fourier 변환을 통해 최대 주파수 구하기
+            max_freq = sliding_window_processor.fourier_trans_max_amp(part_data[:, 3], 100)  # absolute 값
+            #print(f"Max Frequency for dataset {j}: {max_freq}")
+
+            # SlidingWindow 클래스 인스턴스 생성 및 슬라이딩 윈도우 처리
+            win_datas=sliding_window_processor.sliding_window(1/max_freq,1/max_freq*0.5,j)
+            #print(Data_Extract.data_extraction(win_datas[3]).extract_feature())
+            for i in range(0, len(win_datas)):
+                    
+                    X.append(Data_Extract.data_extraction(win_datas[i], stat_variable=stat_variable, fft_variable=fft_variable).extract_feature())
+                    y.append(Y_label[int(j/10)])
+
+
+    label_encoder = LabelEncoder()
+    y_encoded = label_encoder.fit_transform(y)
+
+    X_train, X_val, y_train, y_val = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+
+    if select_model == 'KNN':
+        model = KNeighborsClassifier(n_neighbors=5)
+    elif select_model == 'SVM':
+        model = SVC(kernel='linear')
+    else:
+        raise ValueError("Invalid model type specified.")
+    
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_val)
+
+    accuracy = accuracy_score(y_val, y_pred)
+    
+    message = (f"KNN 분류 정확도 (가중치 부여): {accuracy * 100:.2f}%")
+    print(message)
+    if callback:
+        callback(message)
+    else:
+        print(message)
 
     return model, label_encoder

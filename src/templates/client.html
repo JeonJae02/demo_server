@@ -55,6 +55,30 @@
     <button id="select_preprocess">선택 완료!</button>
 
 
+    <h1>원하는 인공지능 모델을 선택하세요</h1>
+    <form id="model-form">
+        <div class="radio-group">
+            <label>
+                <input type="radio" name="model" value="SVM"> SVM (분류하는 것에 매우 탁월한 성능을 갖고 있어요)
+            </label>
+            <label>
+                <input type="radio" name="model" value="GRU"> GRU (시간에 따라 변화하는 데이터 예측에 매우 탁월한 성능을 갖고 있어요)
+            </label>
+            <label>
+                <input type="radio" name="model" value="RNN"> RNN (데이터들 암기를 잘해요! 긴~ 데이터를 사용할때 유용해요)
+            </label>
+            <label>
+                <input type="radio" name="model" value="CNN"> CNN (가볍고 빠르게 학습해요)
+            </label>
+            <label>
+                <input type="radio" name="model" value="KNN"> KNN (흩어져 있는 여러 데이터를 모둠지어주는데에 매우 탁월한 성능을 갖고 있어요.)
+            </label>
+        </div>
+        <button type="button" id="submit-button">모델 선정 완료</button>
+    </form>
+    <div id="response-message"></div>
+
+    
     <button id="startTraining">학습 시작</button>
 
     <pre id="output"></pre>

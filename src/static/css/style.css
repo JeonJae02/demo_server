@@ -14,6 +14,12 @@ button {
     cursor: pointer;
 }
 
+.radio-group label {
+  display: block;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
 button:hover {
     background-color: #45a049;
 }
