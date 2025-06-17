@@ -78,7 +78,20 @@
     </form>
     <div id="response-message"></div>
 
+
+    <div class="section">
+        <h2>Set Parameters</h2>
+        <div id="params_container">
+            <input type="number" class="param_input" value="0" step="any" placeholder="Parameter 1">
+            <input type="number" class="param_input" value="0" step="any" placeholder="Parameter 2">
+            <input type="number" class="param_input" value="0" step="any" placeholder="Parameter 3">
+            <input type="number" class="param_input" value="0" step="any" placeholder="Parameter 4">
+        </div>
+        <button id="set_params">Set Parameters</button>
+        <p id="params_status"></p>
+    </div>
     
+
     <button id="startTraining">학습 시작</button>
 
     <pre id="output"></pre>
@@ -103,6 +116,10 @@
 </span></p>
 
     <!-- JavaScript 파일 연결 -->
+    <script>
+        const MODEL      = "{{ model }}";
+        const PARAM_CNT  = Number("{{ param_count }}");
+    </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>

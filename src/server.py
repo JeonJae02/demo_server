@@ -21,6 +21,13 @@ CORS(app)
 
 app.permanent_session_lifetime = timedelta(days=1)
 
+PARAM_COUNTS = {
+    "GRU": 4,
+    "RNN": 4,
+    "KNN": 2,
+    "SVM": 2
+}
+
 @app.route('/')
 def index():
     return render_template('client.html')
@@ -119,9 +126,34 @@ def select_model():
     selected_model = data.get('model')
     if selected_model:
         print(f"선택된 모델: {selected_model}")
+        if selected_model not in PARAM_COUNTS:
+            return jsonify(ok=False, error="존재하지 않는 모델"), 400
         session["model"] = selected_model
+        session.pop("params", None)
         return jsonify({'message': f'{selected_model} 모델이 저장되었습니다!'})
     return jsonify({'message': '모델 선택에 실패했습니다.'}), 400
+
+@app.route("/set_params", methods=["POST"])
+def set_params():
+    client_id = session.get('client_id')
+    if not client_id:
+        return jsonify({"error": "Session not initialized"}), 401
+    
+    if "model" not in session:
+        return jsonify(ok=False, error="모델을 먼저 선택하세요"), 400
+
+    model   = session["model"]
+    needed  = PARAM_COUNTS[model]         # 필요한 개수
+    params  = request.json.get("params", [])
+
+    # ↑ params 길이는 0~4 아무거나 올 수 있음
+    if len(params) < needed:
+        return jsonify(ok=False,
+                       error=f"{needed}개의 값이 필요합니다"), 400
+
+    session["params"] = params[:needed]   # 초과분 무시해 잘라서 저장
+    return jsonify({'message': '매개변수 설정 완료!.'})
+
     
 @app.route("/train_data", methods=["GET"])
 def train_data():
@@ -134,6 +166,7 @@ def train_data():
     stat_var=session["stat_var"]
     fft_var=session["fft_var"]
     selected_model=session["model"]
+    params=session["params"]
 
     def generate():
         q = Queue()
@@ -142,7 +175,9 @@ def train_data():
             q.put(message)
 
         def run_training():
-            model, label_encoder = train_model.train_NN(selected_model, t_data_set, t_labels, stat_variable=stat_var, fft_variable=fft_var, callback=progress_callback)
+            model, label_encoder = train_model.train_NN(selected_model, t_data_set, t_labels, stat_variable=stat_var, fft_variable=fft_var, 
+                                                        _test_size=params[0], _batch_size=params[1], _learning_rate=params[2], _num_epochs=[3],
+                                                        callback=progress_callback)
             # 모델 및 라벨 인코더 저장
             
             os.makedirs('tmp', exist_ok=True)
@@ -173,7 +208,8 @@ def train_data():
             q.put(message)
 
         def run_training():
-            model, label_encoder = train_model.train_m(selected_model, t_data_set, t_labels, stat_variable=stat_var, fft_variable=fft_var, callback=progress_callback)
+            model, label_encoder = train_model.train_m(selected_model, t_data_set, t_labels, stat_variable=stat_var, fft_variable=fft_var,
+                                                       _test_size=params[0], _n_neighbors=params[1], callback=progress_callback)
             # 모델 및 라벨 인코더 저장
             
             os.makedirs('tmp', exist_ok=True)
@@ -290,7 +326,6 @@ def login():
 
     session['client_id'] = client_id
     return jsonify({"message": "Session initialized", "client_id": client_id}), 200
-
 
 
 

@@ -194,6 +194,31 @@ document.getElementById('submit-button').addEventListener('click', function () {
         });
 });
 
+
+/* ---------- 2) 파라미터 저장 ---------- */
+document.getElementById("set_params").addEventListener("click", async () => {
+    // 입력된 매개변수들을 배열로 수집
+    const inputs = document.querySelectorAll(".param_input");
+    const params = Array.from(inputs).map(input => parseFloat(input.value.trim()));
+
+    // 빈 값이 있을 경우 경고
+    if (params.some(param => param === "")) {
+        alert("Please fill in all parameter fields.");
+        return;
+    }
+
+    // 서버로 매개변수 전송
+    const response = await fetch('/set_params', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ params }),
+    });
+
+    const result = await response.json();
+    document.getElementById("params_status").textContent = result.message || result.error;
+});
+
+
 // 학습 시작
 document.getElementById('startTraining').addEventListener('click', () => {
   /*const epochs = document.getElementById('epochs').value || 10;

@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import accuracy_score
 
-def train_NN(select_model, data_set, Y_label, stat_variable=103, fft_variable=1, callback=None):
+def train_NN(select_model, data_set, Y_label, stat_variable=103, fft_variable=1, _test_size=0.2, _batch_size=32, _learning_rate=0.001,_num_epochs=60, callback=None):
     num=len(data_set)
 
     X=[]
@@ -37,7 +37,7 @@ def train_NN(select_model, data_set, Y_label, stat_variable=103, fft_variable=1,
     label_encoder = LabelEncoder()
     y_encoded = label_encoder.fit_transform(y)
 
-    X_train, X_val, y_train, y_val = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X, y_encoded, test_size=_test_size, random_state=42)
 
 
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32)   # (batch_size, seq_length, input_dim)
@@ -47,11 +47,11 @@ def train_NN(select_model, data_set, Y_label, stat_variable=103, fft_variable=1,
 
     # Dataset & DataLoader 설정
     # dateset을 n개로 나눠서 최적화 진행
-    batch_size = 32
+    batch_size = _batch_size
     dataset = TensorDataset(X_train_tensor, y_train_tensor)
     val_dataset = TensorDataset(X_val_tensor, y_val_tensor)
     data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True) # 시계열 데이터니깐 shuffle을 하면 안되지만 sliding window를 사용했기때문에 여기선 True
-    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     if select_model == 'GRU':
         model = GRUMotionClassifier(input_size=len(X[1]), hidden_size=64, num_layers=2, output_size=len(Y_label))
@@ -67,13 +67,13 @@ def train_NN(select_model, data_set, Y_label, stat_variable=103, fft_variable=1,
 
 
     # ========== 3. 학습 설정 ==========
-    learning_rate=0.001 # 학습률, weight를 update할때 얼만큼 weight를 조정할건지, 너무 크면 확확 바뀌고, 너무 작으면 찔끔찔끔 변화함. 적당한 것이 0.001
+    learning_rate=_learning_rate # 학습률, weight를 update할때 얼만큼 weight를 조정할건지, 너무 크면 확확 바뀌고, 너무 작으면 찔끔찔끔 변화함. 적당한 것이 0.001
     criterion = nn.CrossEntropyLoss()  # 분류 문제 -> CrossEntropyLoss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate) # 처음에는 큰 lr을 사용하다가 점차 작은 lr을 사용하는 최적화 알고리즘
 
 
     # ========== 4. 학습 실행 ==========
-    num_epochs = 60
+    num_epochs = _num_epochs
 
     for epoch in range(num_epochs):
         model.train()  # 모델을 훈련 모드로 설정
@@ -109,7 +109,7 @@ def train_NN(select_model, data_set, Y_label, stat_variable=103, fft_variable=1,
 
     return model, label_encoder
 
-def train_m(select_model, data_set, Y_label, stat_variable=103, fft_variable=1, callback=None):
+def train_m(select_model, data_set, Y_label, stat_variable=103, fft_variable=1, _test_size=0.2, _n_neighbors=5, callback=None):
     num=len(data_set)
 
     X=[]
@@ -134,10 +134,10 @@ def train_m(select_model, data_set, Y_label, stat_variable=103, fft_variable=1, 
     label_encoder = LabelEncoder()
     y_encoded = label_encoder.fit_transform(y)
 
-    X_train, X_val, y_train, y_val = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X, y_encoded, test_size=_test_size, random_state=42)
 
     if select_model == 'KNN':
-        model = KNeighborsClassifier(n_neighbors=5)
+        model = KNeighborsClassifier(n_neighbors=_n_neighbors)
     elif select_model == 'SVM':
         model = SVC(kernel='linear')
     else:
