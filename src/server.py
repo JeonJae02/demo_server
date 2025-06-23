@@ -10,20 +10,26 @@ import joblib
 from queue import Queue
 from threading import Thread
 import time
+from werkzeug.utils import secure_filename
+import os
+
 
 app = Flask(__name__)
 
 # 세션 설정
 app.config['SECRET_KEY'] = 'your_secret_key'  # 세션 암호화를 위한 키
 app.config['SESSION_TYPE'] = 'filesystem'    # 세션 데이터를 파일에 저장
-Session(app)
-CORS(app)
+app.config['SESSION_COOKIE_SECURE'] = True # HTTPS 환경에서만 쿠키 전송
+app.config['SESSION_COOKIE_HTTPONLY'] = True # HTTP 요청에서만 쿠키 접근 가능
+app.config['SESSION_COOKIE_SAMESITE'] = 'None' # SameSite 속성 설정
 
+Session(app)
+CORS(app, supports_credentials=True, origins=['http://localhost:3000']) 
 app.permanent_session_lifetime = timedelta(days=1)
 
 @app.route('/')
 def index():
-    return render_template('client.html')
+    return render_template('/client.html')
 
 @app.route('/initialize', methods=['GET'])
 def initialize():
@@ -31,6 +37,7 @@ def initialize():
     if 'client_id' not in session:
         session['client_id'] = str(uuid.uuid4())  # 고유한 UUID 생성
     return jsonify({"client_id": session['client_id']})
+
 
 
 @app.route('/submit-labels', methods=['POST'])
@@ -54,18 +61,55 @@ def make_data_from_csv():
     if not client_id:
         return jsonify({"error": "Session not initialized"}), 401
     
-    data = request.json
-    if not isinstance(data, dict):
-        return jsonify({"error": "Invalid data format. Expected a dictionary."}), 400
+    # tmp/{client_id} 폴더 생성
+    client_tmp_dir = os.path.join('tmp', client_id)
+    os.makedirs(client_tmp_dir, exist_ok=True)
 
+    # 파일 업로드 처리
+    if 'files' not in request.files:
+        return jsonify({"error": "No files part"}), 400
 
-    session["data_set"], session["Y_label"]=makenumpyfile.make_data_csv(data["folder_path"], data["file_name"], data_set_per_label=10, time_window=3)
+    files = request.files.getlist('files')
+    saved_files = []
+    for file in files:
+        filename = secure_filename(file.filename)
+        save_path = os.path.join(client_tmp_dir, filename)
+        file.save(save_path)
+        saved_files.append(filename)
+
+    # 디버깅: 세션에서 라벨 확인
+    labels = session.get('labels')
+    print(f"[DEBUG] 전달할 labels: {labels}")  # 
+    print(f"[DEBUG] client_id: {client_id}, session['labels']: {labels}")
+
+    if not labels:
+        print("[ERROR] 세션에 라벨이 없습니다!")
+        return jsonify({"error": "Labels not found in session. 먼저 라벨을 제출하세요."}), 400
+    
+    # 파일명에서 공통 prefix 추출 (예: RawData)
+    if not saved_files:
+        return jsonify({"error": "No files uploaded"}), 400
+    base_name = os.path.splitext(saved_files[0])[0]
+
+    # makenumpyfile.make_data_csv 호출
+    try:
+        data_set, y_label = makenumpyfile.make_data_csv(
+            folder_path=client_tmp_dir,
+            file_name=base_name,
+            data_set_per_label=len(saved_files),
+            time_window=3,
+            labels=labels  # session['labels'] 전달
+        )
+        session["data_set"] = data_set
+        session["Y_label"] = y_label
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
     return jsonify({
-        "message": "Data saved successfully",
-        "Y_label": session["Y_label"]  # 현재 세션 데이터 반환
-    })
-
+    "message": "Data saved successfully",
+    "Y_label": y_label.tolist() if hasattr(y_label, "tolist") else y_label
+}
+)
 
 @app.route("/input_npy_data", methods=["POST"])
 def make_data_from_npy():
@@ -142,7 +186,7 @@ def train_data():
     return Response(generate(), content_type="text/event-stream")
 
 
-@app.route("/input_npy_data_test", methods=["POST"])
+@app.route("/input_npy_data_test", methods=["POST"]) #테스트 할 데이터를 넘파이로 받아줌. input _ csv requst 만들어야됨. 
 def make_data_from_npy_test():
     client_id = session.get('client_id')
     if not client_id:
@@ -211,7 +255,7 @@ def clear_session():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
-
+# 사용자 별로 쌓인 세션을 관리하기 위해 Flask-Session 
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -228,6 +272,6 @@ def login():
 
 if __name__ == '__main__':
     # SSL 인증서와 키 파일 경로 설정
-    app.run(ssl_context=('C:/Users/user/jentry/makeserver/src/certs/certificate.crt',
-                         'C:/Users/user/jentry/makeserver/src/certs/private.key'),
+    app.run(ssl_context=('/Users/songjunha/certificate.crt',
+                         '/Users/songjunha/private.key'),
             host='0.0.0.0', port=443)
