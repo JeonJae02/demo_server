@@ -14,6 +14,12 @@ button {
     cursor: pointer;
 }
 
+.radio-group label {
+  display: block;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
 button:hover {
     background-color: #45a049;
 }
@@ -52,7 +58,7 @@ button:hover {
     right: -5px;
   }
   
-  .submit-btn {
+  .submit-btn .select_preprocess {
     margin-top: 20px;
     padding: 10px 20px;
     background-color: #4CAF50;
@@ -61,3 +67,14 @@ button:hover {
     cursor: pointer;
     border-radius: 5px;
   }
+
+  #param-container input {
+    display: block;
+    margin: 8px 0;
+    padding: 6px 10px;
+    width: 160px;
+}
+
+.btn-group {
+    margin-top: 20px;
+}

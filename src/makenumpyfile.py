@@ -20,7 +20,6 @@ def make_data_csv(folder_path, file_name, data_set_per_label=10, time_window=3, 
             continue
         #result_df = processor.remove_edges_from_csv(file_path)
         #file_path = f"C:/Users/user/OneDrive/바탕 화면/test/rawdataset/RawData{i}.csv"
-    
         # CSV 파일에서 양 끝 10% 데이터 제거
         #result_df = processor.remove_edges_from_csv(file_path)
 
@@ -42,3 +41,37 @@ def make_data_csv(folder_path, file_name, data_set_per_label=10, time_window=3, 
     return total_array, y_label
 
 #data_set, Y_label=make_data_csv(folder_path="C:/Users/user/OneDrive/바탕 화면/test/rawdataset", file_name="RawData")
+
+def upload_and_process_files(session, files):
+    client_tmp_dir = "C:/Users/user/AppData/Local/Temp"
+    os.makedirs(client_tmp_dir, exist_ok=True)
+
+    saved_files = []
+    for file in files:
+        file.save(os.path.join(client_tmp_dir, file.filename))
+        saved_files.append(file.filename)
+
+    labels = session.get('labels')
+    num_labels = len(labels)
+    files_per_label = 10  # 라벨당 10개로 고정
+
+    # 파일 개수 체크
+    if len(saved_files) != num_labels * files_per_label:
+        return jsonify({"error": f"파일 개수는 라벨 수({num_labels}) x 10 = {num_labels*10}개여야 합니다."}), 400
+
+    if not saved_files:
+        return jsonify({"error": "No files uploaded"}), 400
+    base_name = os.path.splitext(saved_files[0])[0]
+
+    try:
+        data_set, y_label = make_data_csv(
+            folder_path=client_tmp_dir,
+            file_name=base_name,
+            data_set_per_label=files_per_label,  # 항상 10개로 고정
+            time_window=3,
+            labels=labels
+        )
+        # 필요하다면 반환값 처리
+    except Exception as e:
+        print(f"[ERROR] make_data_csv 실행 중 오류: {e}")
+        return

@@ -3,3 +3,9 @@ src/certs/
 src/flask_session/
 
 src/__pycache__/
+
+src/tmp/
+
+flask_session/
+
+tmp/

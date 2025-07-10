@@ -39,6 +39,59 @@
     <p id="result"></p>
 
 
+    <h3>중요한 통계 요소를 신중하게 골라 선택해주세요!</h3>
+    <div id="options">
+        <label><input type="checkbox" id="option0"> 최대</label><br>
+        <label><input type="checkbox" id="option1"> 최소</label><br>
+        <label><input type="checkbox" id="option2"> 평균값</label><br>
+        <label><input type="checkbox" id="option3"> 중간값</label><br>
+        <label><input type="checkbox" id="option4"> 최빈값</label><br>
+        <label><input type="checkbox" id="option5"> 표준편차</label><br>
+        <label><input type="checkbox" id="option6"> 범위 (Range)</label><br>
+    </div>
+    <div id="fft-option">
+        <label><input type="checkbox" id="fft"> FFT 컴포넌트</label><br>
+    </div>
+    <button id="select_preprocess">선택 완료!</button>
+
+
+    <h1>원하는 인공지능 모델을 선택하세요</h1>
+    <form id="model-form">
+        <div class="radio-group">
+            <label>
+                <input type="radio" name="model" value="SVM"> SVM (분류하는 것에 매우 탁월한 성능을 갖고 있어요)
+            </label>
+            <label>
+                <input type="radio" name="model" value="GRU"> GRU (시간에 따라 변화하는 데이터 예측에 매우 탁월한 성능을 갖고 있어요)
+            </label>
+            <label>
+                <input type="radio" name="model" value="RNN"> RNN (데이터들 암기를 잘해요! 긴~ 데이터를 사용할때 유용해요)
+            </label>
+            <label>
+                <input type="radio" name="model" value="CNN"> CNN (가볍고 빠르게 학습해요)
+            </label>
+            <label>
+                <input type="radio" name="model" value="KNN"> KNN (흩어져 있는 여러 데이터를 모둠지어주는데에 매우 탁월한 성능을 갖고 있어요.)
+            </label>
+        </div>
+        <button type="button" id="submit-button">모델 선정 완료</button>
+    </form>
+    <div id="response-message"></div>
+
+
+    <div class="section">
+        <h2>Set Parameters</h2>
+        <div id="params_container">
+            <input type="number" class="param_input" value="0" step="any" placeholder="Parameter 1">
+            <input type="number" class="param_input" value="0" step="any" placeholder="Parameter 2">
+            <input type="number" class="param_input" value="0" step="any" placeholder="Parameter 3">
+            <input type="number" class="param_input" value="0" step="any" placeholder="Parameter 4">
+        </div>
+        <button id="set_params">Set Parameters</button>
+        <p id="params_status"></p>
+    </div>
+    
+
     <button id="startTraining">학습 시작</button>
 
     <pre id="output"></pre>
@@ -63,6 +116,10 @@
 </span></p>
 
     <!-- JavaScript 파일 연결 -->
+    <script>
+        const MODEL      = "{{ model }}";
+        const PARAM_CNT  = Number("{{ param_count }}");
+    </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>

@@ -127,6 +127,98 @@ fileInput.addEventListener("change", () => {
     });
 });
 
+document.getElementById('select_preprocess').addEventListener('click', () => {
+  // 2진법 선택 데이터 계산
+  let binarySelection = 0;
+  for (let i = 0; i <= 6; i++) {
+      const checkbox = document.getElementById(`option${i}`);
+      if (checkbox.checked) {
+          binarySelection |= (1 << (i));  // 해당 비트 설정
+      }
+  }
+
+  // FFT 선택 여부
+  const fftSelected = document.getElementById('fft').checked;
+
+  // 서버로 데이터 전송
+  fetch('/set_train', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+          stat_var: binarySelection,
+          fft_var: fftSelected
+      }),
+  })
+  .then(response => response.json())
+  .then(data => {
+      alert(data.message);
+  })
+  .catch(error => {
+      console.error('Error:', error);
+  });
+});
+
+document.getElementById('submit-button').addEventListener('click', function () {
+    const selectedModel = document.querySelector('input[name="model"]:checked');
+
+    if (!selectedModel) {
+        alert('모델을 선택해주세요!');
+        return;
+    }
+
+    const modelName = selectedModel.value;
+
+    // SVM과 KNN 구분 메시지
+    if (modelName === 'SVM' || modelName === 'KNN') {
+        console.log(`${modelName}은(는) 뉴럴 네트워크가 아닙니다.`);
+    } else {
+        console.log(`${modelName}은(는) 뉴럴 네트워크 기반 모델입니다.`);
+    }
+
+    // 서버로 데이터 전송
+    fetch('/select_model', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ model: modelName }),
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            document.getElementById('response-message').innerText = data.message;
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
+});
+
+
+/* ---------- 2) 파라미터 저장 ---------- */
+document.getElementById("set_params").addEventListener("click", async () => {
+    // 입력된 매개변수들을 배열로 수집
+    const inputs = document.querySelectorAll(".param_input");
+    const params = Array.from(inputs).map(input => parseFloat(input.value.trim()));
+
+    // 빈 값이 있을 경우 경고
+    if (params.some(param => param === "")) {
+        alert("Please fill in all parameter fields.");
+        return;
+    }
+
+    // 서버로 매개변수 전송
+    const response = await fetch('/set_params', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ params }),
+    });
+
+    const result = await response.json();
+    document.getElementById("params_status").textContent = result.message || result.error;
+});
+
+
 // 학습 시작
 document.getElementById('startTraining').addEventListener('click', () => {
   /*const epochs = document.getElementById('epochs').value || 10;

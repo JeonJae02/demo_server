@@ -13,7 +13,6 @@ import time
 from werkzeug.utils import secure_filename
 import os
 
-
 app = Flask(__name__)
 
 # 세션 설정
@@ -26,6 +25,13 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'None' # SameSite 속성 설정
 Session(app)
 CORS(app, supports_credentials=True, origins=['http://localhost:3000']) 
 app.permanent_session_lifetime = timedelta(days=1)
+
+PARAM_COUNTS = {
+    "GRU": 4,
+    "RNN": 4,
+    "KNN": 2,
+    "SVM": 2
+}
 
 @app.route('/')
 def index():
@@ -70,6 +76,7 @@ def make_data_from_csv():
         return jsonify({"error": "No files part"}), 400
 
     files = request.files.getlist('files')
+    
     saved_files = []
     for file in files:
         filename = secure_filename(file.filename)
@@ -91,14 +98,21 @@ def make_data_from_csv():
         return jsonify({"error": "No files uploaded"}), 400
     base_name = os.path.splitext(saved_files[0])[0]
 
+    labels = session.get('labels')
+    num_labels = len(labels)
+    files_per_label = 10  # 라벨당 10개로 고정
+
+    if len(saved_files) != num_labels * files_per_label:
+        return jsonify({"error": f"파일 개수는 라벨 수({num_labels}) x 10 = {num_labels*10}개여야 합니다."}), 400
+
     # makenumpyfile.make_data_csv 호출
     try:
         data_set, y_label = makenumpyfile.make_data_csv(
             folder_path=client_tmp_dir,
             file_name=base_name,
-            data_set_per_label=len(saved_files),
+            data_set_per_label=files_per_label,
             time_window=3,
-            labels=labels  # session['labels'] 전달
+            labels=labels
         )
         session["data_set"] = data_set
         session["Y_label"] = y_label
@@ -141,7 +155,72 @@ def make_data_from_npy():
         "total_count": total_count
     })
 
+@app.route("/set_train", methods=["POST"])
+def set_train():
+    client_id = session.get('client_id')
+    if not client_id:
+        return jsonify({"error": "Session not initialized"}), 401
+    
+    data=request.json
+    session["stat_var"]=data.get('stat_var')
+    session["fft_var"]=data.get('fft_var')
 
+    return jsonify({'message': 'Data saved successfully!'})
+
+@app.route("/select_model", methods=["POST"])
+def select_model():
+    client_id = session.get('client_id')
+    if not client_id:
+        return jsonify({"error": "Session not initialized"}), 401
+    
+    data=request.json
+    selected_model = data.get('model')
+    if selected_model:
+        print(f"선택된 모델: {selected_model}")
+        if selected_model not in PARAM_COUNTS:
+            return jsonify(ok=False, error="존재하지 않는 모델"), 400
+        session["model"] = selected_model
+        session.pop("params", None)
+        return jsonify({'message': f'{selected_model} 모델이 저장되었습니다!'})
+    return jsonify({'message': '모델 선택에 실패했습니다.'}), 400
+
+@app.route("/set_params", methods=["POST"])
+def set_params():
+    client_id = session.get('client_id')
+    if not client_id:
+        return jsonify({"error": "Session not initialized"}), 401
+    
+    if "model" not in session:
+        return jsonify(ok=False, error="모델을 먼저 선택하세요"), 400
+
+    model   = session["model"]
+    needed  = PARAM_COUNTS[model]         # 필요한 개수
+    params  = request.json.get("params", [])
+
+    if len(params) < needed:
+        return jsonify(ok=False,
+                       error=f"{needed}개의 값이 필요합니다"), 400
+
+    # 파라미터 타입 변환 (정수/실수로)
+    if model in ["GRU", "RNN"]:
+        # [test_size, batch_size, learning_rate, num_epochs]
+        params = [
+            float(params[0]),   # test_size
+            int(params[1]),     # batch_size
+            float(params[2]),   # learning_rate
+            int(params[3])      # num_epochs
+        ]
+    elif model in ["KNN", "SVM"]:
+        # [test_size, n_neighbors]
+        params = [
+            float(params[0]),   # test_size
+            int(params[1])      # n_neighbors
+        ]
+
+    session["params"] = params[:needed]
+    return jsonify({'message': '매개변수 설정 완료!.'})
+
+    
 @app.route("/train_data", methods=["GET"])
 def train_data():
     client_id = session.get('client_id')
@@ -150,7 +229,10 @@ def train_data():
     
     t_data_set = session["data_set"]
     t_labels= session["labels"]
-
+    stat_var=session["stat_var"]
+    fft_var=session["fft_var"]
+    selected_model=session["model"]
+    params=session["params"]
 
     def generate():
         q = Queue()
@@ -159,7 +241,12 @@ def train_data():
             q.put(message)
 
         def run_training():
-            model, label_encoder = train_model.train_m(t_data_set, t_labels, callback=progress_callback)
+            model, label_encoder = train_model.train_NN(
+                selected_model, t_data_set, t_labels,
+                stat_variable=stat_var, fft_variable=fft_var, 
+                _test_size=params[0], _batch_size=params[1], _learning_rate=params[2], _num_epochs=params[3],  # 수정: [3] → params[3]
+                callback=progress_callback
+            )
             # 모델 및 라벨 인코더 저장
             
             os.makedirs('tmp', exist_ok=True)
@@ -183,7 +270,42 @@ def train_data():
 
         yield "data: Training completed.\n\n"
 
-    return Response(generate(), content_type="text/event-stream")
+    def generate_M():
+        q = Queue()
+        # 콜백 함수 정의
+        def progress_callback(message):
+            q.put(message)
+
+        def run_training():
+            model, label_encoder = train_model.train_m(selected_model, t_data_set, t_labels, stat_variable=stat_var, fft_variable=fft_var,
+                                                       _test_size=params[0], _n_neighbors=params[1], callback=progress_callback)
+            # 모델 및 라벨 인코더 저장
+            
+            os.makedirs('tmp', exist_ok=True)
+            client_dir = os.path.join("tmp", client_id)
+            os.makedirs(client_dir, exist_ok=True)
+
+            model_path = os.path.join(client_dir, "model.pkl")
+            label_path = os.path.join(client_dir, "label_encoder.pkl")
+            joblib.dump(model, model_path)
+            joblib.dump(label_encoder, label_path)
+            
+            q.put(None)  # 완료 신호
+
+        Thread(target=run_training).start()
+
+        while True:
+            message = q.get()
+            if message is None:
+                break
+            yield f"data: {message}\n\n"
+
+        yield "data: Training completed.\n\n"
+
+    if selected_model == 'KNN' or selected_model == 'SVM':
+        return Response(generate_M(), content_type="text/event-stream")
+    else:
+        return Response(generate(), content_type="text/event-stream")
 
 
 @app.route("/input_npy_data_test", methods=["POST"]) #테스트 할 데이터를 넘파이로 받아줌. input _ csv requst 만들어야됨. 
@@ -226,6 +348,9 @@ def test():
        
     datatest_list=session["test_set"]
     y_label=session["labels"]
+    stat_var=session["stat_var"]
+    fft_var=session["fft_var"]
+    selected_model=session["model"]
 
     client_dir = os.path.join("tmp", client_id)
     model_path = os.path.join(client_dir, "model.pkl")
@@ -234,7 +359,11 @@ def test():
     if os.path.exists(model_path) and os.path.exists(label_path):
         model = joblib.load(model_path)
         label_encoder = joblib.load(label_path)
-        predicted_class=test_model.test_m(datatest_list, model, label_encoder, y_label)
+        if selected_model == 'SVM' or selected_model == 'KNN':
+            predicted_class=test_model.test_m(datatest_list, model, label_encoder, y_label, stat_variable=stat_var, fft_variable=fft_var)
+        else:
+            predicted_class=test_model.test_NN(datatest_list, model, label_encoder, y_label, stat_variable=stat_var, fft_variable=fft_var)
+
         def generate():
             for i, pred in enumerate(predicted_class):
                 yield f"data: Test Sample {i+1}: Predicted Motion = {label_encoder.inverse_transform([pred.item()])}\n\n"
@@ -266,7 +395,6 @@ def login():
 
     session['client_id'] = client_id
     return jsonify({"message": "Session initialized", "client_id": client_id}), 200
-
 
 
 
